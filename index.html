@@ -3,7 +3,7 @@
 <head>
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1.0">
- <title>維基百科 + AI 韓劇角色卡司追蹤庫</title>
+ <title>維基百科 + AI 韓國影視卡司追蹤庫 (韓劇/韓國電影)</title>
  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap">
  <style>
  :root {
@@ -96,12 +96,12 @@
  </div>
  </div>
 
- <!-- 2. 韓劇查詢與匯入區塊 -->
+ <!-- 2. 韓國電影與韓劇查詢/匯入區塊 -->
  <div class="search-panel">
  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom: 0.8rem;">
  <div>
- <h3>🔍 韓劇角色查詢與匯入</h3>
- <p style="font-size:0.8rem; color:var(--muted); margin-top:4px;">自動搜尋維基百科 ➔ 由 AI 提取男女主角與卡司陣容</p>
+ <h3>🔍 韓國電影與韓劇角色查詢/匯入</h3>
+ <p style="font-size:0.8rem; color:var(--muted); margin-top:4px;">自動搜尋維基百科 ➔ 由 AI 深度提取韓國影視主演與黃金配角陣容</p>
  </div>
  <div style="display:flex; gap:0.5rem;">
  <button id="modeSingleBtn" onclick="switchInputMode('single')" style="padding:0.4rem 0.8rem; font-size:0.82rem; background:var(--accent);">單筆查詢</button>
@@ -112,10 +112,10 @@
  <!-- 單筆模式 -->
  <div id="singleInputPanel">
  <div class="search-row">
- <input type="text" id="queryInput" placeholder="輸入劇名（例如：淚之女王、黑暗榮耀、浪漫醫生金師傅、雖然是精神病但沒關係）...">
+ <input type="text" id="queryInput" placeholder="輸入韓國電影或韓劇名（例如：鬼怪、陽光先生、雲畫的月光、寄生上流）...">
  <button onclick="searchAndParse()">AI 查詢角色</button>
  </div>
- <div class="loading" id="loadingText">⏳ 正在檢索維基百科條目並由 AI 提取角色架構，請稍候...</div>
+ <div class="loading" id="loadingText">⏳ 正在檢索維基百科條目並由 AI 深度提取角色架構，請稍候...</div>
 
  <!-- 查詢預覽結果 -->
  <div class="preview-box" id="previewBox">
@@ -134,15 +134,13 @@
  <!-- 批量匯入模式 -->
  <div id="batchInputPanel" style="display:none; margin-top: 1rem;">
  <p style="font-size:0.85rem; color:#cbd5e1; margin-bottom: 0.5rem;">
- 請在下方貼上劇名列表（一行一部，或以頓號、逗號隔開），系統將自動逐一檢索維基並加入「<span style="color:#a5b4fc; font-weight:bold;" class="current-user-name"></span>」的看過清單：
+ 請在下方貼上作品名稱列表（一行一部韓國電影或韓劇，或以頓號、逗號隔開），系統將自動逐一檢索維基並加入「<span style="color:#a5b4fc; font-weight:bold;" class="current-user-name"></span>」的看過清單：
  </p>
  <textarea id="batchInput" rows="6" placeholder="例如：
-淚之女王
-黑暗榮耀
-浪漫醫生金師傅
-信號
-請回答1988
-鬼怪"></textarea>
+孤單又燦爛的神—鬼怪
+陽光先生
+雲畫的月光
+寄生上流"></textarea>
  <div style="display:flex; gap:0.75rem; margin-top: 0.75rem; align-items:center;">
  <button id="batchStartBtn" onclick="startBatchImport()" style="background:var(--success);">🚀 開始批量解析並直接入庫</button>
  <button id="batchStopBtn" onclick="stopBatchImport()" style="background:#ef4444; display:none;">⏹️ 停止處理</button>
@@ -165,8 +163,8 @@
  <div class="ranking-section" id="actorRankingSection" style="display:none;">
  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
  <div style="display:flex; align-items:center; gap:0.75rem;">
- <h3 id="rankingHeader">🏆 演員常客排行榜</h3>
- <span id="rankStatusText" style="font-size:0.75rem; color:var(--muted);">依觀看紀錄統計（已自動歸併多季同劇）</span>
+ <h3 id="rankingHeader">🏆 韓國演員常客排行榜</h3>
+ <span id="rankStatusText" style="font-size:0.75rem; color:var(--muted);">依角色權重積分統計（主演 8分 • 配角 4分 • 客串 2分）</span>
  </div>
  <div style="display:flex; align-items:center; gap:0.5rem;">
  <label style="font-size:0.82rem; color:var(--muted);">顯示名次：</label>
@@ -201,10 +199,10 @@
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem; flex-wrap:wrap; gap:0.5rem;">
  <h3 id="watchlistHeader">觀看紀錄</h3>
  <div style="display:flex; align-items:center; gap:0.5rem;">
- <label style="font-size:0.82rem; color:var(--muted);">劇集排序：</label>
+ <label style="font-size:0.82rem; color:var(--muted);">作品排序：</label>
  <select id="watchlistSortSelect" onchange="renderWatchlist()" style="padding:0.3rem 0.6rem; font-size:0.82rem;">
- <option value="year_desc" selected>播出年份（由新到舊）</option>
- <option value="year_asc">播出年份（由舊到新）</option>
+ <option value="year_desc" selected>上映/播出年份（由新到舊）</option>
+ <option value="year_asc">上映/播出年份（由舊到新）</option>
  <option value="created_desc">新增時間（最新優先）</option>
  </select>
  </div>
@@ -224,7 +222,7 @@
  alert('Gemini API Key 已儲存！');
  }
 
- // 標準化劇名工具函數：去除季數後綴
+ // 標準化作品名稱工具函數：去除季數或續集號碼後綴
  function getBaseTitle(title) {
  if (!title) return '';
  return title
@@ -233,7 +231,7 @@
  .trim() || title;
  }
 
- // 智慧儲存與跨季歸併邏輯
+ // 智慧儲存與跨季/續集歸併邏輯
  function saveDramaToUserList(dramaData) {
  const key = `user_list_${currentUser}`;
  let list = JSON.parse(localStorage.getItem(key) || '[]');
@@ -242,7 +240,6 @@
  const existingIdx = list.findIndex(d => getBaseTitle(d.canonical_title) === baseTitle);
 
  if (existingIdx !== -1) {
- // 若已存在同系列劇，進行 Smart Merge（卡司去重與年份更新）
  const existing = list[existingIdx];
  const charMap = new Map();
 
@@ -256,7 +253,6 @@
  if (!charMap.has(actorKey)) {
  charMap.set(actorKey, c);
  } else {
- // 智慧整合角色標籤：若新季變成主演或客串，自動覆蓋升級
  const oldC = charMap.get(actorKey);
  if (c.is_main_lead) oldC.is_main_lead = true;
  if (c.is_cameo) oldC.is_cameo = true;
@@ -269,7 +265,6 @@
  existing.canonical_title = baseTitle;
  existing.characters = Array.from(charMap.values());
 
- // 整合播出年份
  if (dramaData.broadcast_year && !String(existing.broadcast_year).includes(String(dramaData.broadcast_year))) {
  existing.broadcast_year = `${existing.broadcast_year}, ${dramaData.broadcast_year}`;
  }
@@ -300,7 +295,7 @@
  const url = URL.createObjectURL(blob);
  const a = document.createElement('a');
  a.href = url;
- a.download = `kdrama_backup_${new Date().toISOString().slice(0, 10)}.json`;
+ a.download = `korean_media_backup_${new Date().toISOString().slice(0, 10)}.json`;
  a.click();
  URL.revokeObjectURL(url);
  }
@@ -462,16 +457,16 @@
  }
  }
 
- // --- 核心邏輯：維基百科 API + Gemini AI 結構化提取單部劇 ---
+ // --- 核心邏輯：維基百科 API + 強制深度掃描綠葉的 AI Prompt ---
  async function fetchDramaData(query, geminiKey) {
  let title = "";
  try {
- const searchUrl = `https://zh.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query + ' 韓劇')}&utf8=&format=json&origin=*`;
+ const searchUrl = `https://zh.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query + ' 韓國電影 韓劇')}&utf8=&format=json&origin=*`;
  const sRes = await fetch(searchUrl);
  const sData = await sRes.json();
  title = sData.query?.search?.[0]?.title;
  } catch (e) {
- console.warn('搜尋帶 韓劇 失敗:', e);
+ console.warn('專屬搜尋失敗:', e);
  }
 
  if (!title) {
@@ -479,7 +474,7 @@
  const fbRes = await (await fetch(`https://zh.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`)).json();
  title = fbRes.query?.search?.[0]?.title;
  } catch (e) {
- console.warn('搜尋原關鍵字失敗:', e);
+ console.warn('原關鍵字搜尋失敗:', e);
  }
  }
 
@@ -515,27 +510,27 @@
  }
 
  const prompt = `
-你是一位專業韓劇影視資料分析師。
-劇名：《${title}》
-以下是該劇的維基百科內文（可能包含演員陣容表格）：
+你是一位專業韓國影視資料分析師（精通韓國電影與韓國電視劇/韓劇）。
+作品名稱：《${title}》
+以下是該韓國影視作品的維基百科內文（包含演員陣容表格與配角介紹）：
 ---
-${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補齊。"}
+${wikiText || "無維基內文，請完全依靠你的韓國影視資料庫知識補齊。"}
 ---
 請從中精確提取：
-1. canonical_title: 標準中文劇名（如：${title}）
+1. canonical_title: 標準中文作品名稱（如：${title}）
 2. original_title: 韓文原文或英文名 (若有)
-3. broadcast_year: 播出年份（如：2021）
-4. characters: 角色與演員陣容列表（請【務必盡可能全面收錄 15～25 人】）。
- 包含：男女主角、重要配角、特別出演 / 友情客串（特別出演例如：《鬼怪》丁海寅、《魷魚遊戲》孔劉/李炳憲）。
+3. broadcast_year: 上映或播出年份（如：2016、2018、2019）
+4. characters: 角色與演員陣容列表（請【務必地毯式完整收錄 20～30 人】）。
 
- - actor: 演員本名（例如：李政宰、朴海秀、魏嘏雋、孔劉）
- - character: 飾演的角色名稱（例如：成奇勳、曹尚佑、黃俊昊）
- - is_main_lead: boolean (僅限排最前方的 2-4 位男女核心主角為 true)
+【嚴格指令：絕不漏掉黃金綠葉與配角】
+請務必仔細掃描維基內文後方的「其他人物」、「主要配角」、「朝廷/組織成員」等段落！
+絕對不能只抓男女主角。必須將知名實力派綠葉、反派、金牌配角、特別客串（例如在《鬼怪》中的金炳哲/朴仲憲、李伊/三神奶奶、趙祐鎮/金秘書；在《陽光先生》中的金炳哲、趙祐鎮等）全部完整抓出！
+
+ - actor: 韓國演員本名（例如：金炳哲、李伊、趙祐鎮、孔劉、李棟旭）
+ - character: 飾演的角色名稱（例如：朴仲憲、三神奶奶、金信）
+ - is_main_lead: boolean (僅限排最前方的核心男女主角為 true，綠葉配角一律設為 false)
  - is_cameo: boolean (是否為特別出演 / 友情客串 / 特別客串)
  - short_desc: 角色的簡短設定或關係 (一句話)
-
-【重要指示】
-若這是一部包含多季的經典劇集（如《魷魚遊戲》、《驚奇的傳聞》、《浪漫醫生金師傅》），請務必跨季收錄主要演員與重要角色，切勿漏掉後續季數登場的熟面孔！
 
 請輸出合法的 JSON，格式如下：
 {
@@ -583,7 +578,7 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  if (isCameo) {
  badgeHtml = '<span class="badge-cameo">✨ 特別出演</span>';
  } else if (isLead) {
- badgeHtml = '<span class="badge-lead">男女主角</span>';
+ badgeHtml = '<span class="badge-lead">主角/主演</span>';
  }
 
  return `
@@ -621,7 +616,7 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  if (!geminiKey) return alert('請先填寫並儲存 Gemini API Key！');
 
  const rawInput = document.getElementById('batchInput').value.trim();
- if (!rawInput) return alert('請在文字框中輸入至少一部劇名！');
+ if (!rawInput) return alert('請在文字框中輸入至少一部作品名稱！');
 
  const dramaNames = Array.from(new Set(
  rawInput.split(/[\n,，、;；]/)
@@ -629,9 +624,9 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  .filter(s => s.length > 0)
  ));
 
- if (!dramaNames.length) return alert('無法辨識到任何有效劇名！');
+ if (!dramaNames.length) return alert('無法辨識到任何有效作品名稱！');
 
- const confirmMsg = `即將批量解析並加入 ${dramaNames.length} 部劇到「${currentUser}」的清單：\n\n${dramaNames.slice(0, 5).join('、')}${dramaNames.length > 5 ? '...等' : ''}\n\n是否開始？`;
+ const confirmMsg = `即將批量解析並加入 ${dramaNames.length} 部韓國電影/韓劇到「${currentUser}」的清單：\n\n${dramaNames.slice(0, 5).join('、')}${dramaNames.length > 5 ? '...等' : ''}\n\n是否開始？`;
  if (!confirm(confirmMsg)) return;
 
  isBatchRunning = true;
@@ -668,7 +663,7 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  const logItem = document.createElement('div');
  logItem.style.color = '#34d399';
  logItem.style.marginBottom = '4px';
- logItem.innerText = `✅ [${i + 1}/${dramaNames.length}] 《${dramaData.canonical_title}》(${dramaData.broadcast_year || '年份未詳'}) 已整合收錄 ${(dramaData.characters || []).length} 名角色`;
+ logItem.innerText = `✅ [${i + 1}/${dramaNames.length}] 《${dramaData.canonical_title}》(${dramaData.broadcast_year || '年份未詳'}) 已收錄 ${(dramaData.characters || []).length} 名角色`;
  logContainer.prepend(logItem);
 
  renderWatchlist();
@@ -699,7 +694,7 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  if (!currentParsedData) return;
  saveDramaToUserList(currentParsedData);
 
- alert(`已將《${currentParsedData.canonical_title}》歸併收錄至 ${currentUser} 的看過清單！`);
+ alert(`已將《${currentParsedData.canonical_title}》收錄至 ${currentUser} 的看過清單！`);
  renderWatchlist();
  renderActorRanking();
  }
@@ -714,7 +709,7 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  renderActorRanking();
  }
 
- // --- 計算並渲染演員出現頻率排行榜與主演備取區 ---
+ // --- 計算並渲染演員出現頻率排行榜與主演備取區 (採用角色權重積分制：主演 8分 • 配角 4分 • 客串 2分) ---
  function renderActorRanking(isManual = false) {
  const key = `user_list_${currentUser}`;
  const list = JSON.parse(localStorage.getItem(key) || '[]');
@@ -732,7 +727,7 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
 
  const limit = parseInt(limitSelect?.value || '35', 10);
  const limitTitleText = limit === 999 ? '全部演員' : `Top ${limit}`;
- if (rankHeader) rankHeader.innerText = `🏆 ${currentUser} 的演員常客 ${limitTitleText}`;
+ if (rankHeader) rankHeader.innerText = `🏆 ${currentUser} 的韓國演員常客 ${limitTitleText}`;
 
  const actorMap = {};
 
@@ -780,6 +775,10 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  const count = seriesList.length;
  const leadCount = seriesList.filter(s => s.isLead).length;
  const cameoCount = seriesList.filter(s => s.isCameo).length;
+ const suppCount = count - leadCount - cameoCount;
+
+ // 💡 方案 A 權重積分：主演 8 分、配角 4 分、特別客串 2 分
+ const score = (leadCount * 8) + (suppCount * 4) + (cameoCount * 2);
  
  const dramasDetail = seriesList.map(s => {
  const roleStr = Array.from(s.roles).join('/') || '未詳';
@@ -792,12 +791,13 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  count: count,
  leadCount: leadCount,
  cameoCount: cameoCount,
+ score: score,
  dramas: dramasDetail
  };
  }).sort((a, b) => {
+ if (b.score !== a.score) return b.score - a.score;
  if (b.count !== a.count) return b.count - a.count;
- if (b.leadCount !== a.leadCount) return b.leadCount - a.leadCount;
- return b.cameoCount - a.cameoCount;
+ return b.leadCount - a.leadCount;
  });
 
  const topList = sorted.slice(0, limit);
@@ -808,16 +808,15 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
 
  section.style.display = 'block';
  if (statusText) {
- statusText.innerText = `已統計 ${list.length} 部劇 (${new Date().toLocaleTimeString()} 刷新)`;
+ statusText.innerText = `已統計 ${list.length} 部韓國影視作品 (${new Date().toLocaleTimeString()} 刷新)`;
  statusText.style.color = isManual ? '#818cf8' : 'var(--muted)';
  }
  const medals = ['🥇', '🥈', '🥉'];
- const maxCount = topList[0].count;
+ const maxScore = topList[0].score || 1;
 
  container.innerHTML = topList.map((item, idx) => {
  const rank = idx + 1;
  const medalOrNum = idx < 3 ? medals[idx] : `<span class="rank-num">#${rank}</span>`;
- const percentage = Math.round((item.count / list.length) * 100);
  const rolesDetail = item.dramas.join('、');
  const cameoStr = item.cameoCount > 0 ? ` • 客串 ${item.cameoCount} 次` : '';
 
@@ -830,15 +829,15 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  <div class="actor-role-list">${rolesDetail}</div>
  </div>
  <div class="count-tag">
- <span class="count-val">${item.count}</span> 部系列劇
+ <span class="count-val">${item.score}</span> 分
  </div>
  </div>
  <div class="bar-bg">
- <div class="bar-fill" style="width: ${(item.count / maxCount) * 100}%;"></div>
+ <div class="bar-fill" style="width: ${(item.score / maxScore) * 100}%;"></div>
  </div>
  <div style="font-size:0.75rem; color:var(--muted); margin-top:6px; display:flex; justify-content:space-between;">
  <span>主演 ${item.leadCount} 次${cameoStr}</span>
- <span>出演率 ${percentage}%</span>
+ <span>共 ${item.count} 部作品</span>
  </div>
  </div>
  `;
@@ -866,7 +865,7 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  <div class="backup-card" title="${rolesDetail}">
  <span style="color:#fff; font-weight:600;">${item.actor}</span>
  <span style="font-size:0.72rem; color:#e11d48; background:rgba(225,29,72,0.12); padding:1px 5px; border-radius:4px;">主演 ${item.leadCount} 次${cameoStr}</span>
- <span style="font-size:0.72rem; color:var(--muted);">共 ${item.count} 部</span>
+ <span style="font-size:0.72rem; color:var(--muted);">${item.score} 分 (共 ${item.count} 部)</span>
  </div>
  `;
  }).join('');
@@ -893,7 +892,7 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  saveDramaToUserList(newData);
  renderWatchlist();
  renderActorRanking();
- alert(`《${title}》已重新解析並完成智慧合併！`);
+ alert(`《${title}》已重新解析完成！`);
  } catch (err) {
  alert(`重新解析失敗: ${err.message}`);
  renderWatchlist();
@@ -912,7 +911,7 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  const container = document.getElementById('watchlistGrid');
 
  if (!list.length) {
- container.innerHTML = `<p style="color:var(--muted);">${currentUser} 尚未記錄任何韓劇。</p>`;
+ container.innerHTML = `<p style="color:var(--muted);">${currentUser} 尚未記錄任何韓國電影或韓劇。</p>`;
  return;
  }
 
@@ -936,7 +935,7 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
  <h4>${d.canonical_title}</h4>
  <div style="display:flex; gap:6px; align-items:center;">
- <button onclick="reparseDrama('${d.canonical_title}')" title="重新擷取演員陣容" style="background:#21262d; border:1px solid var(--border); color:#a5b4fc; font-size:0.75rem; padding:2px 8px; cursor:pointer;">🔄 重抓</button>
+ <button onclick="reparseDrama('${d.canonical_title}')" title="重新擷取卡司陣容" style="background:#21262d; border:1px solid var(--border); color:#a5b4fc; font-size:0.75rem; padding:2px 8px; cursor:pointer;">🔄 重抓</button>
  <button onclick="removeWatchItem('${d.canonical_title}')" style="background:transparent; color:#ef4444; padding:0; cursor:pointer;">刪除</button>
  </div>
  </div>
