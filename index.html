@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>維基百科 + AI 韓劇角色卡司追蹤庫</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --text: #c9d1d9;
+      --muted: #8b949e;
+      --border: #30363d;
+      --success: #238636;
+      --lead-tag: #e11d48;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 2rem; max-width: 1100px; margin: 0 auto; }
+
+    /* 頂部設定列 */
+    .top-bar { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 1rem 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+    .row { display: flex; align-items: center; gap: 0.75rem; }
+    input, select, button { padding: 0.6rem 0.9rem; border-radius: 6px; border: 1px solid var(--border); background: #0d1117; color: #fff; font-size: 0.9rem; }
+    button { background: var(--accent); cursor: pointer; border: none; font-weight: 600; transition: background 0.2s; }
+    button:hover { background: var(--accent-hover); }
+
+    /* 查詢面板 */
+    .search-panel { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 2rem; }
+    .search-row { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    .search-row input { flex: 1; }
+
+    /* 查詢結果預覽區 */
+    .preview-box { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed var(--border); display: none; }
+    .preview-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.2rem; }
+    .cast-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .cast-card { background: #0d1117; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border); }
+    .cast-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .role-name { font-weight: 700; color: #a5b4fc; font-size: 0.95rem; }
+    .actor-name { font-size: 0.85rem; color: #e2e8f0; }
+    .badge-lead { font-size: 0.7rem; background: var(--lead-tag); color: #fff; padding: 2px 6px; border-radius: 4px; }
+    .badge-sub { font-size: 0.7rem; background: #374151; color: #9ca3af; padding: 2px 6px; border-radius: 4px; }
+    .desc { font-size: 0.78rem; color: var(--muted); margin-top: 6px; line-height: 1.35; }
+
+    /* 個人觀看庫清單 */
+    .watch-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+    .saved-card { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); padding: 1.2rem; }
+    .loading { color: #fbbf24; display: none; margin-top: 0.6rem; font-size: 0.9rem; }
+
+    /* 演員 Top 10 排行榜 */
+    .ranking-section { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 2rem; }
+    .ranking-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .ranking-card { background: #0d1117; padding: 0.9rem; border-radius: 6px; border: 1px solid var(--border); transition: transform 0.15s ease, border-color 0.15s ease; }
+    .ranking-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .ranking-header { display: flex; align-items: center; gap: 0.75rem; }
+    .rank-badge { font-size: 1.25rem; font-weight: bold; width: 32px; text-align: center; }
+    .rank-num { font-size: 0.95rem; color: var(--muted); font-weight: 700; }
+    .actor-info { flex: 1; min-width: 0; }
+    .actor-name-title { font-weight: 700; color: #fff; font-size: 1rem; }
+    .actor-role-list { font-size: 0.76rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+    .count-tag { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.4); padding: 2px 8px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+    .count-val { font-size: 1rem; font-weight: 700; color: #a5b4fc; }
+    .bar-bg { background: #21262d; height: 5px; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+    .bar-fill { background: linear-gradient(90deg, #6366f1, #a855f7); height: 100%; border-radius: 3px; }
+
+    /* 批量匯入樣式 */
+    textarea { width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border); background: #0d1117; color: #fff; font-size: 0.9rem; line-height: 1.5; box-sizing: border-box; resize: vertical; }
+    .progress-bar-bg { background: #21262d; height: 8px; border-radius: 4px; overflow: hidden; margin: 10px 0; }
+    .progress-bar-fill { background: linear-gradient(90deg, #6366f1, #10b981); height: 100%; width: 0%; transition: width 0.3s; }
+    .log-box { background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 0.8rem; max-height: 180px; overflow-y: auto; font-family: monospace; font-size: 0.82rem; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <!-- 1. 使用者 Profile & API 設定 -->
+  <div class="top-bar">
+    <div class="row">
+      <label>目前使用者檔案：</label>
+      <select id="userSelect" onchange="switchUser()"></select>
+      <button onclick="addUser()">+ 新增使用者</button>
+    </div>
+    <div class="row">
+      <input type="password" id="geminiKey" placeholder="貼上 Gemini API Key">
+      <button onclick="saveKey()">儲存 Key</button>
+      <button onclick="exportData()" title="匯出所有使用者與觀看紀錄為備份檔" style="background:#21262d; border:1px solid var(--border);">📥 匯出資料備份</button>
+      <button onclick="document.getElementById('importFile').click()" title="匯入備份檔還原紀錄" style="background:#21262d; border:1px solid var(--border);">📤 匯入資料備份</button>
+      <input type="file" id="importFile" accept=".json" onchange="importData(event)" style="display:none;">
+    </div>
+  </div>
+
+  <!-- 2. 韓劇查詢與匯入區塊 -->
+  <div class="search-panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom: 0.8rem;">
+      <div>
+        <h3>🔍 韓劇角色查詢與匯入</h3>
+        <p style="font-size:0.8rem; color:var(--muted); margin-top:4px;">自動搜尋維基百科 ➔ 由 AI 提取男女主角與卡司陣容</p>
+      </div>
+      <div style="display:flex; gap:0.5rem;">
+        <button id="modeSingleBtn" onclick="switchInputMode('single')" style="padding:0.4rem 0.8rem; font-size:0.82rem; background:var(--accent);">單筆查詢</button>
+        <button id="modeBatchBtn" onclick="switchInputMode('batch')" style="padding:0.4rem 0.8rem; font-size:0.82rem; background:#21262d;">📦 批量匯入</button>
+      </div>
+    </div>
+    
+    <!-- 單筆模式 -->
+    <div id="singleInputPanel">
+      <div class="search-row">
+        <input type="text" id="queryInput" placeholder="輸入劇名（例如：淚之女王、黑暗榮耀、浪漫醫生金師傅、雖然是精神病但沒關係）...">
+        <button onclick="searchAndParse()">AI 查詢角色</button>
+      </div>
+      <div class="loading" id="loadingText">⏳ 正在檢索維基百科條目並由 AI 提取角色架構，請稍候...</div>
+
+      <!-- 查詢預覽結果 -->
+      <div class="preview-box" id="previewBox">
+        <div class="preview-header">
+          <div>
+            <h2 id="prevTitle" style="color:#fff;"></h2>
+            <p id="prevSummary" style="color:var(--muted); font-size:0.85rem; margin-top:2px;"></p>
+          </div>
+          <button onclick="saveToCurrentWatchlist()" style="background:var(--success);">+ 加入我的看過清單</button>
+        </div>
+
+        <div class="cast-grid" id="prevCastGrid"></div>
+      </div>
+    </div>
+
+    <!-- 批量匯入模式 -->
+    <div id="batchInputPanel" style="display:none; margin-top: 1rem;">
+      <p style="font-size:0.85rem; color:#cbd5e1; margin-bottom: 0.5rem;">
+        請在下方貼上劇名列表（一行一部，或以頓號、逗號隔開），系統將自動逐一檢索維基並加入「<span style="color:#a5b4fc; font-weight:bold;" class="current-user-name"></span>」的看過清單：
+      </p>
+      <textarea id="batchInput" rows="6" placeholder="例如：
+淚之女王
+黑暗榮耀
+浪漫醫生金師傅
+信號
+請回答1988
+鬼怪"></textarea>
+      <div style="display:flex; gap:0.75rem; margin-top: 0.75rem; align-items:center;">
+        <button id="batchStartBtn" onclick="startBatchImport()" style="background:var(--success);">🚀 開始批量解析並直接入庫</button>
+        <button id="batchStopBtn" onclick="stopBatchImport()" style="background:#ef4444; display:none;">⏹️ 停止處理</button>
+      </div>
+
+      <!-- 批量進度與即時日誌 -->
+      <div id="batchProgressBox" style="display:none; margin-top: 1rem;">
+        <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+          <span id="batchProgressText" style="color:#a5b4fc; font-weight:600;">準備中...</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="batchProgressBar"></div>
+        </div>
+        <div class="log-box" id="batchLogList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 演員熟面孔 Top 10 排行榜 -->
+  <div class="ranking-section" id="actorRankingSection" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <h3 id="rankingHeader">🏆 演員常客排行榜 Top 10</h3>
+        <span id="rankStatusText" style="font-size:0.75rem; color:var(--muted);">依觀看紀錄統計</span>
+      </div>
+      <button onclick="renderActorRanking(true)" style="background:#21262d; border:1px solid var(--border); padding:0.4rem 0.8rem; font-size:0.8rem; display:flex; align-items:center; gap:4px;">
+        🔄 重新統計排行
+      </button>
+    </div>
+    <div class="ranking-grid" id="actorRankingGrid"></div>
+  </div>
+
+  <!-- 4. 該使用者看過的清單 -->
+  <div>
+    <h3 id="watchlistHeader" style="margin-bottom:0.5rem;">觀看紀錄</h3>
+    <div class="watch-list" id="watchlistGrid"></div>
+  </div>
+
+  <script>
+    // --- 使用者狀態管理 ---
+    let users = JSON.parse(localStorage.getItem('kdrama_ai_users') || '["預設使用者"]');
+    let currentUser = localStorage.getItem('kdrama_ai_current_user') || users[0];
+    document.getElementById('geminiKey').value = localStorage.getItem('gemini_api_key') || '';
+    let currentParsedData = null;
+
+    function saveKey() {
+      localStorage.setItem('gemini_api_key', document.getElementById('geminiKey').value.trim());
+      alert('Gemini API Key 已儲存！');
+    }
+
+    // --- 資料備份匯出與匯入（方便帶回家或跨電腦使用） ---
+    function exportData() {
+      const backup = {
+        users: users,
+        currentUser: currentUser,
+        geminiKey: localStorage.getItem('gemini_api_key') || '',
+        data: {}
+      };
+      users.forEach(u => {
+        const key = `user_list_${u}`;
+        backup.data[u] = JSON.parse(localStorage.getItem(key) || '[]');
+      });
+
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `kdrama_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importData(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const backup = JSON.parse(evt.target.result);
+          if (!backup.users || !backup.data) throw new Error('備份檔格式不符');
+
+          localStorage.setItem('kdrama_ai_users', JSON.stringify(backup.users));
+          if (backup.currentUser) {
+            localStorage.setItem('kdrama_ai_current_user', backup.currentUser);
+          }
+          if (backup.geminiKey) {
+            localStorage.setItem('gemini_api_key', backup.geminiKey);
+            document.getElementById('geminiKey').value = backup.geminiKey;
+          }
+
+          Object.keys(backup.data).forEach(u => {
+            localStorage.setItem(`user_list_${u}`, JSON.stringify(backup.data[u]));
+          });
+
+          users = backup.users;
+          currentUser = backup.currentUser || users[0];
+          syncUsers();
+          alert('資料匯入成功！已還原所有使用者與觀看紀錄。');
+        } catch (err) {
+          alert('匯入失敗：' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    }
+
+    function syncUsers() {
+      const select = document.getElementById('userSelect');
+      select.innerHTML = users.map(u => `<option value="${u}" ${u === currentUser ? 'selected' : ''}>${u}</option>`).join('');
+      document.getElementById('watchlistHeader').innerText = `👤 ${currentUser} 的看過清單`;
+      const rankHeader = document.getElementById('rankingHeader');
+      if (rankHeader) rankHeader.innerText = `🏆 ${currentUser} 的演員常客 Top 10`;
+      document.querySelectorAll('.current-user-name').forEach(el => el.innerText = currentUser);
+      renderWatchlist();
+      renderActorRanking();
+    }
+
+    function addUser() {
+      const name = prompt('請輸入使用者名稱：');
+      if (!name || users.includes(name)) return;
+      users.push(name);
+      localStorage.setItem('kdrama_ai_users', JSON.stringify(users));
+      currentUser = name;
+      localStorage.setItem('kdrama_ai_current_user', currentUser);
+      syncUsers();
+    }
+
+    function switchUser() {
+      currentUser = document.getElementById('userSelect').value;
+      localStorage.setItem('kdrama_ai_current_user', currentUser);
+      syncUsers();
+    }
+
+    // --- 動態尋找可用模型並呼叫 Gemini API ---
+    // --- 動態尋找可用模型並呼叫 Gemini API ---
+    async function callGeminiAPI(prompt, geminiKey) {
+      let modelList = [];
+      try {
+        const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
+        const listData = await listRes.json();
+        if (listData.error) {
+          throw new Error(`Gemini API 報錯 (${listData.error.code}): ${listData.error.message}`);
+        }
+        if (listData.models && Array.isArray(listData.models)) {
+          modelList = listData.models
+            .filter(m => {
+              const name = m.name.toLowerCase();
+              const hasGen = m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent');
+              // 排除音訊、TTS、純語音、嵌入等非純文字生成的模型
+              const isNonText = name.includes('tts') || name.includes('audio') || name.includes('embed') || name.includes('imagen') || name.includes('realtime');
+              return hasGen && !isNonText;
+            })
+            .map(m => m.name.replace(/^models\//, ''));
+        }
+      } catch (err) {
+        if (err.message && err.message.includes('Gemini API 報錯')) throw err;
+      }
+
+      // 優先候選順序（純文字模型）
+      const priorityOrder = [
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+        'gemini-1.5-pro',
+        'gemini-2.5-pro',
+        'gemini-1.5-flash-latest'
+      ];
+      const candidates = Array.from(new Set([
+        ...priorityOrder,
+        ...modelList.filter(m => m.includes('flash')),
+        ...modelList
+      ])).filter(name => !name.includes('tts') && !name.includes('audio') && !name.includes('embed'));
+
+      let lastError = null;
+      for (const model of candidates) {
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { responseMimeType: "application/json" }
+            })
+          });
+
+          const json = await res.json();
+          if (json.error) {
+            // 如果是 API Key 本身無效，立即中斷通知使用者
+            if (json.error.message && json.error.message.toLowerCase().includes('api key')) {
+              throw new Error(`Gemini API Key 無效: ${json.error.message}`);
+            }
+
+            // 其餘錯誤（模態不支援如 AUDIO/TTS、404 不存在、503 伺服器忙碌、429 限流等），一律自動換下一個模型
+            console.warn(`模型 ${model} 遇到錯誤 (${json.error.code}): ${json.error.message}，自動切換備用模型...`);
+            lastError = new Error(`模型 ${model} (${json.error.code}): ${json.error.message}`);
+            continue;
+          }
+
+          const candidate = json.candidates?.[0];
+          if (!candidate || !candidate.content?.parts?.[0]?.text) {
+            const reason = candidate?.finishReason || '未知原因';
+            throw new Error(`AI 未回傳內容（原因: ${reason}）`);
+          }
+
+          let rawJsonText = candidate.content.parts[0].text.trim();
+          rawJsonText = rawJsonText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+          return JSON.parse(rawJsonText);
+        } catch (e) {
+          lastError = e;
+          if (e.message && e.message.includes('Gemini API Key 無效')) throw e;
+          // 其他網路或格式錯誤換下一個模型
+          continue;
+        }
+      }
+      throw lastError || new Error('所有可用 Gemini 模型皆請求失敗，請檢查 API Key 是否有可用權限。');
+    }
+
+    // --- 切換單筆/批量模式 ---
+    function switchInputMode(mode) {
+      const singlePanel = document.getElementById('singleInputPanel');
+      const batchPanel = document.getElementById('batchInputPanel');
+      const singleBtn = document.getElementById('modeSingleBtn');
+      const batchBtn = document.getElementById('modeBatchBtn');
+
+      if (mode === 'single') {
+        singlePanel.style.display = 'block';
+        batchPanel.style.display = 'none';
+        singleBtn.style.background = 'var(--accent)';
+        batchBtn.style.background = '#21262d';
+      } else {
+        singlePanel.style.display = 'none';
+        batchPanel.style.display = 'block';
+        singleBtn.style.background = '#21262d';
+        batchBtn.style.background = 'var(--accent)';
+      }
+    }
+
+    // --- 核心邏輯：維基百科 API + Gemini AI 結構化提取單部劇 ---
+    async function fetchDramaData(query, geminiKey) {
+      // 1. 維基百科搜尋標準中文條目
+      const searchUrl = `https://zh.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query + ' 韓劇')}&utf8=&format=json&origin=*`;
+      const sRes = await fetch(searchUrl);
+      const sData = await sRes.json();
+      
+      let title = sData.query?.search?.[0]?.title;
+      if (!title) {
+        const fbRes = await (await fetch(`https://zh.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`)).json();
+        title = fbRes.query?.search?.[0]?.title;
+      }
+      if (!title) throw new Error('維基百科查無此劇集條目');
+
+      // 2. 抓取維基百科內文（優先取得完整 wikitext，保留表格中被 extracts 濾除的演員名單）
+      let wikiText = '';
+      try {
+        const parseUrl = `https://zh.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(title)}&prop=wikitext&format=json&origin=*`;
+        const pRes = await fetch(parseUrl);
+        const pData = await pRes.json();
+        const rawWikitext = pData.parse?.wikitext?.['*'];
+        if (rawWikitext) {
+          // 清理維基連結 [[演員|角色]] -> 演員，保留表格內文字
+          wikiText = rawWikitext
+            .replace(/\[\[(?:[^|\]]*\|)?([^\]]+)\]\]/g, '$1')
+            .replace(/<!--[\s\S]*?-->/g, '')
+            .slice(0, 16000);
+        }
+      } catch (e) {
+        console.warn('Wikitext 獲取失敗，降級至 extracts', e);
+      }
+
+      // 降級 fallback：若 parse 失敗則改用 extracts
+      if (!wikiText) {
+        const contentUrl = `https://zh.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=true&titles=${encodeURIComponent(title)}&redirects=1&format=json&origin=*`;
+        const cRes = await fetch(contentUrl);
+        const cData = await cRes.json();
+        const pages = cData.query?.pages;
+        const pageId = Object.keys(pages || {})[0];
+        wikiText = pages?.[pageId]?.extract?.slice(0, 12000) || '';
+      }
+
+      // 3. 呼叫 Gemini 進行結構化 JSON 解析
+      const prompt = `
+你是一位專業韓劇影視資料分析師。
+劇名：《${title}》
+以下是該劇的維基百科內文（包含演員陣容表格源代碼）：
+---
+${wikiText}
+---
+請從中精確提取：
+1. canonical_title: 標準中文劇名（如：${title}）
+2. original_title: 韓文原文或英文名 (若有)
+3. broadcast_year: 播出年份
+4. characters: 角色與演員陣容列表（演員本名與飾演角色名）。
+   - actor: 演員本名（例如：李帝勳、蔡秀彬）
+   - character: 飾演的角色名稱（例如：李修延、韓夏天）
+   - is_main_lead: boolean (是否為維基百科排在最前方的男女主角/主演，限前 2-4 人)
+   - short_desc: 角色的簡短設定或關係 (一句話)
+
+【重要指示】
+若維基百科內文中演員資料不全，請【務必結合你的韓劇資料庫知識】主動補齊該劇的主要男女主角與重要卡司（演員本名與飾演角色），切勿回傳空的 characters 列表！
+
+請輸出合法的 JSON，格式如下：
+{
+  "canonical_title": "...",
+  "original_title": "...",
+  "broadcast_year": "...",
+  "characters": [
+    {"actor": "...", "character": "...", "is_main_lead": true, "short_desc": "..."}
+  ]
+}
+不要輸出任何 Markdown 語法或說明，只要純 JSON。
+`;
+
+      const parsed = await callGeminiAPI(prompt, geminiKey);
+      parsed.id = Date.now();
+      return parsed;
+    }
+
+    // 單筆查詢處理
+    async function searchAndParse() {
+      const geminiKey = localStorage.getItem('gemini_api_key');
+      if (!geminiKey) return alert('請先填寫並儲存 Gemini API Key！');
+
+      const query = document.getElementById('queryInput').value.trim();
+      if (!query) return;
+
+      const loading = document.getElementById('loadingText');
+      const previewBox = document.getElementById('previewBox');
+      loading.style.display = 'block';
+      previewBox.style.display = 'none';
+
+      try {
+        currentParsedData = await fetchDramaData(query, geminiKey);
+
+        document.getElementById('prevTitle').innerText = currentParsedData.canonical_title;
+        document.getElementById('prevSummary').innerText = `${currentParsedData.original_title || ''} • ${currentParsedData.broadcast_year || ''}`;
+
+        document.getElementById('prevCastGrid').innerHTML = currentParsedData.characters.map(c => `
+          <div class="cast-card">
+            <div class="cast-header">
+              <span class="role-name">${c.character}</span>
+              ${c.is_main_lead ? '<span class="badge-lead">男女主角</span>' : '<span class="badge-sub">配角</span>'}
+            </div>
+            <div class="actor-name">演員：${c.actor}</div>
+            ${c.short_desc ? `<div class="desc">${c.short_desc}</div>` : ''}
+          </div>
+        `).join('');
+
+        previewBox.style.display = 'block';
+
+      } catch (err) {
+        alert('解析失敗：' + err.message);
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    // 批量匯入處理
+    let isBatchRunning = false;
+    let shouldStopBatch = false;
+
+    function stopBatchImport() {
+      shouldStopBatch = true;
+    }
+
+    async function startBatchImport() {
+      if (isBatchRunning) return;
+      const geminiKey = localStorage.getItem('gemini_api_key');
+      if (!geminiKey) return alert('請先填寫並儲存 Gemini API Key！');
+
+      const rawInput = document.getElementById('batchInput').value.trim();
+      if (!rawInput) return alert('請在文字框中輸入至少一部劇名！');
+
+      // 支援以換行、逗號、頓號、分號分割
+      const dramaNames = Array.from(new Set(
+        rawInput.split(/[\n,，、;；]/)
+          .map(s => s.trim().replace(/^[\d\.\-\*•\s]+/, '')) // 清除可能的前置序號如 "1. "、"- "
+          .filter(s => s.length > 0)
+      ));
+
+      if (!dramaNames.length) return alert('無法辨識到任何有效劇名！');
+
+      const confirmMsg = `即將批量解析並加入 ${dramaNames.length} 部劇到「${currentUser}」的清單：\n\n${dramaNames.slice(0, 5).join('、')}${dramaNames.length > 5 ? '...等' : ''}\n\n是否開始？`;
+      if (!confirm(confirmMsg)) return;
+
+      isBatchRunning = true;
+      shouldStopBatch = false;
+
+      document.getElementById('batchStartBtn').disabled = true;
+      document.getElementById('batchStopBtn').style.display = 'inline-block';
+      document.getElementById('batchProgressBox').style.display = 'block';
+      const logContainer = document.getElementById('batchLogList');
+      logContainer.innerHTML = '';
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (let i = 0; i < dramaNames.length; i++) {
+        if (shouldStopBatch) {
+          const stopItem = document.createElement('div');
+          stopItem.style.color = '#f59e0b';
+          stopItem.innerText = `⚠️ 已手動停止批量匯入。`;
+          logContainer.prepend(stopItem);
+          break;
+        }
+
+        const name = dramaNames[i];
+        const progress = Math.round(((i) / dramaNames.length) * 100);
+        document.getElementById('batchProgressBar').style.width = `${progress}%`;
+        document.getElementById('batchProgressText').innerText = `正在處理 (${i + 1}/${dramaNames.length}): 《${name}》...`;
+
+        try {
+          const dramaData = await fetchDramaData(name, geminiKey);
+          
+          // 自動儲存到當前使用者的看過清單
+          const key = `user_list_${currentUser}`;
+          let list = JSON.parse(localStorage.getItem(key) || '[]');
+          list = list.filter(d => d.canonical_title !== dramaData.canonical_title);
+          list.unshift(dramaData);
+          localStorage.setItem(key, JSON.stringify(list));
+
+          successCount++;
+          const logItem = document.createElement('div');
+          logItem.style.color = '#34d399';
+          logItem.style.marginBottom = '4px';
+          logItem.innerText = `✅ [${i + 1}/${dramaNames.length}] 《${dramaData.canonical_title}》(${dramaData.broadcast_year || '年份未詳'}) 成功收錄 ${dramaData.characters.length} 名角色`;
+          logContainer.prepend(logItem);
+
+          // 即時更新介面清單與排行榜
+          renderWatchlist();
+          renderActorRanking();
+
+        } catch (err) {
+          failCount++;
+          const logItem = document.createElement('div');
+          logItem.style.color = '#f87171';
+          logItem.style.marginBottom = '4px';
+          logItem.innerText = `❌ [${i + 1}/${dramaNames.length}] 《${name}》失敗: ${err.message}`;
+          logContainer.prepend(logItem);
+        }
+
+        // 避免觸發 RPM 限流，每部之間間隔 1.2 秒
+        if (i < dramaNames.length - 1 && !shouldStopBatch) {
+          await new Promise(r => setTimeout(r, 1200));
+        }
+      }
+
+      document.getElementById('batchProgressBar').style.width = '100%';
+      document.getElementById('batchProgressText').innerText = `批量匯入完成！成功 ${successCount} 部，失敗 ${failCount} 部。`;
+      document.getElementById('batchStartBtn').disabled = false;
+      document.getElementById('batchStopBtn').style.display = 'none';
+      isBatchRunning = false;
+    }
+
+    // 加入該使用者的檔案清單
+    function saveToCurrentWatchlist() {
+      if (!currentParsedData) return;
+      const key = `user_list_${currentUser}`;
+      let list = JSON.parse(localStorage.getItem(key) || '[]');
+      
+      list = list.filter(d => d.canonical_title !== currentParsedData.canonical_title);
+      list.unshift(currentParsedData);
+      localStorage.setItem(key, JSON.stringify(list));
+
+      alert(`已將《${currentParsedData.canonical_title}》加入 ${currentUser} 的看過清單！`);
+      renderWatchlist();
+      renderActorRanking();
+    }
+
+    function removeWatchItem(title) {
+      const key = `user_list_${currentUser}`;
+      let list = JSON.parse(localStorage.getItem(key) || '[]');
+      list = list.filter(d => d.canonical_title !== title);
+      localStorage.setItem(key, JSON.stringify(list));
+      renderWatchlist();
+      renderActorRanking();
+    }
+
+    // --- 計算並渲染演員出現頻率排行榜 Top 10 ---
+    function renderActorRanking(isManual = false) {
+      const key = `user_list_${currentUser}`;
+      const list = JSON.parse(localStorage.getItem(key) || '[]');
+      const container = document.getElementById('actorRankingGrid');
+      const section = document.getElementById('actorRankingSection');
+      const statusText = document.getElementById('rankStatusText');
+      if (!container || !section) return;
+
+      if (!list.length) {
+        section.style.display = 'none';
+        return;
+      }
+
+      // 累計各演員在不同劇中的出現次數與詳細角色
+      const actorMap = {};
+      list.forEach(drama => {
+        if (!drama.characters || !Array.isArray(drama.characters)) return;
+        const seenInThisDrama = new Set();
+
+        drama.characters.forEach(c => {
+          const actor = (c.actor || '').trim();
+          if (!actor || actor === '未標註' || seenInThisDrama.has(actor)) return;
+          seenInThisDrama.add(actor);
+
+          if (!actorMap[actor]) {
+            actorMap[actor] = {
+              actor: actor,
+              count: 0,
+              leadCount: 0,
+              dramas: []
+            };
+          }
+          actorMap[actor].count += 1;
+          if (c.is_main_lead) actorMap[actor].leadCount += 1;
+          actorMap[actor].dramas.push({
+            title: drama.canonical_title,
+            role: c.character || '未詳',
+            isLead: c.is_main_lead
+          });
+        });
+      });
+
+      // 降序排序：出現劇數多 > 主角次數多
+      const sorted = Object.values(actorMap).sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return b.leadCount - a.leadCount;
+      });
+
+      const top10 = sorted.slice(0, 10);
+      if (!top10.length) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+      if (statusText) {
+        statusText.innerText = `已統計 ${list.length} 部劇 (${new Date().toLocaleTimeString()} 刷新)`;
+        statusText.style.color = isManual ? '#818cf8' : 'var(--muted)';
+      }
+      const medals = ['🥇', '🥈', '🥉'];
+      const maxCount = top10[0].count;
+
+      container.innerHTML = top10.map((item, idx) => {
+        const rank = idx + 1;
+        const medalOrNum = idx < 3 ? medals[idx] : `<span class="rank-num">#${rank}</span>`;
+        const percentage = Math.round((item.count / list.length) * 100);
+        const rolesDetail = item.dramas.map(d => `《${d.title}》${d.role}${d.isLead ? ' (主)' : ''}`).join('、');
+
+        return `
+          <div class="ranking-card" title="${rolesDetail}">
+            <div class="ranking-header">
+              <div class="rank-badge">${medalOrNum}</div>
+              <div class="actor-info">
+                <div class="actor-name-title">${item.actor}</div>
+                <div class="actor-role-list">${rolesDetail}</div>
+              </div>
+              <div class="count-tag">
+                <span class="count-val">${item.count}</span> 部劇
+              </div>
+            </div>
+            <div class="bar-bg">
+              <div class="bar-fill" style="width: ${(item.count / maxCount) * 100}%;"></div>
+            </div>
+            <div style="font-size:0.75rem; color:var(--muted); margin-top:6px; display:flex; justify-content:space-between;">
+              <span>主演 ${item.leadCount} 次</span>
+              <span>出演率 ${percentage}%</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // --- 針對抓取不全的劇重新解析 ---
+    async function reparseDrama(title) {
+      const geminiKey = localStorage.getItem('gemini_api_key');
+      if (!geminiKey) return alert('請先填寫並儲存 Gemini API Key！');
+
+      const originalBtn = event?.target;
+      if (originalBtn) originalBtn.innerText = '⏳ 解析中...';
+
+      try {
+        const newData = await fetchDramaData(title, geminiKey);
+        const key = `user_list_${currentUser}`;
+        let list = JSON.parse(localStorage.getItem(key) || '[]');
+        const idx = list.findIndex(d => d.canonical_title === title);
+        if (idx !== -1) {
+          list[idx] = newData;
+        } else {
+          list.unshift(newData);
+        }
+        localStorage.setItem(key, JSON.stringify(list));
+        renderWatchlist();
+        renderActorRanking();
+        alert(`《${title}》已重新解析完成！成功收錄 ${newData.characters.length} 名角色。`);
+      } catch (err) {
+        alert(`重新解析失敗: ${err.message}`);
+        renderWatchlist();
+      }
+    }
+
+    function renderWatchlist() {
+      const key = `user_list_${currentUser}`;
+      const list = JSON.parse(localStorage.getItem(key) || '[]');
+      const container = document.getElementById('watchlistGrid');
+
+      if (!list.length) {
+        container.innerHTML = `<p style="color:var(--muted);">${currentUser} 尚未記錄任何韓劇。</p>`;
+        return;
+      }
+
+      container.innerHTML = list.map(d => {
+        const charList = d.characters || [];
+        const leads = charList.filter(c => c.is_main_lead).map(c => `${c.actor} (${c.character})`).join('、');
+        const isZero = charList.length === 0;
+
+        return `
+          <div class="saved-card" style="${isZero ? 'border: 1px solid #f59e0b;' : ''}">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <h4>${d.canonical_title}</h4>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <button onclick="reparseDrama('${d.canonical_title}')" title="重新擷取演員陣容" style="background:#21262d; border:1px solid var(--border); color:#a5b4fc; font-size:0.75rem; padding:2px 8px; cursor:pointer;">🔄 重抓</button>
+                <button onclick="removeWatchItem('${d.canonical_title}')" style="background:transparent; color:#ef4444; padding:0; cursor:pointer;">刪除</button>
+              </div>
+            </div>
+            <p style="font-size:0.8rem; color:var(--muted); margin: 4px 0 8px 0;">${d.broadcast_year || ''}</p>
+            <div style="font-size:0.85rem; line-height:1.4;">
+              <span style="color:#a5b4fc; font-weight:600;">主演：</span>${leads || (isZero ? '<span style="color:#f59e0b;">（名單缺失）</span>' : '未標註')}<br>
+              <span style="color:${isZero ? '#f59e0b' : 'var(--muted)'};">共收錄 ${charList.length} 名角色</span>
+              ${isZero ? `
+                <div style="margin-top:8px;">
+                  <button onclick="reparseDrama('${d.canonical_title}')" style="background:#6366f1; color:#fff; border:none; padding:4px 10px; border-radius:4px; font-size:0.8rem; cursor:pointer; width:100%;">
+                    🔄 點此一鍵重新抓取角色名單
+                  </button>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    syncUsers();
+  </script>
+</body>
+</html>
