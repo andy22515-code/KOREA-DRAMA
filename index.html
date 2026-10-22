@@ -49,7 +49,7 @@
  .saved-card { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); padding: 1.2rem; }
  .loading { color: #fbbf24; display: none; margin-top: 0.6rem; font-size: 0.9rem; }
 
- /* 演員 Top 25 排行榜 */
+ /* 演員 Top 35 排行榜 */
  .ranking-section { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 2rem; }
  .ranking-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem; }
  .ranking-card { background: #0d1117; padding: 0.9rem; border-radius: 6px; border: 1px solid var(--border); transition: transform 0.15s ease, border-color 0.15s ease; }
@@ -64,6 +64,10 @@
  .count-val { font-size: 1rem; font-weight: 700; color: #a5b4fc; }
  .bar-bg { background: #21262d; height: 5px; border-radius: 3px; margin-top: 8px; overflow: hidden; }
  .bar-fill { background: linear-gradient(90deg, #6366f1, #a855f7); height: 100%; border-radius: 3px; }
+
+ /* 備取區樣式 */
+ .backup-card { background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 0.45rem 0.75rem; font-size: 0.82rem; display: flex; align-items: center; gap: 8px; transition: border-color 0.15s; }
+ .backup-card:hover { border-color: var(--accent); }
 
  /* 批量匯入樣式 */
  textarea { width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border); background: #0d1117; color: #fff; font-size: 0.9rem; line-height: 1.5; box-sizing: border-box; resize: vertical; }
@@ -155,18 +159,29 @@
  </div>
  </div>
 
- <!-- 3. 演員熟面孔 Top 25 排行榜 -->
+ <!-- 3. 演員熟面孔 Top 35 排行榜與備取區 -->
  <div class="ranking-section" id="actorRankingSection" style="display:none;">
  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
  <div style="display:flex; align-items:center; gap:0.75rem;">
- <h3 id="rankingHeader">🏆 演員常客排行榜 Top 25</h3>
- <span id="rankStatusText" style="font-size:0.75rem; color:var(--muted);">依觀看紀錄統計</span>
+ <h3 id="rankingHeader">🏆 演員常客排行榜 Top 35</h3>
+ <span id="rankStatusText" style="font-size:0.75rem; color:var(--muted);">依觀看紀錄統計（已自動歸併多季同劇）</span>
  </div>
  <button onclick="renderActorRanking(true)" style="background:#21262d; border:1px solid var(--border); padding:0.4rem 0.8rem; font-size:0.8rem; display:flex; align-items:center; gap:4px;">
  🔄 重新統計排行
  </button>
  </div>
  <div class="ranking-grid" id="actorRankingGrid"></div>
+
+ <!-- 主演備取區 -->
+ <div id="leadBackupSection" style="margin-top: 1.5rem; padding-top: 1.2rem; border-top: 1px dashed var(--border); display: none;">
+ <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 0.8rem;">
+ <h4 style="color: #a5b4fc; font-size: 0.95rem; display:flex; align-items:center; gap:6px;">
+ ⭐ 主演備取區 <span style="font-size:0.78rem; font-weight:normal; color:var(--muted);">（曾主演過但未擠進 Top 35）</span>
+ </h4>
+ <span id="backupCountTag" style="font-size:0.75rem; color:var(--muted);"></span>
+ </div>
+ <div id="leadBackupGrid" style="display: flex; flex-wrap: wrap; gap: 0.6rem;"></div>
+ </div>
  </div>
 
  <!-- 4. 該使用者看過的清單 -->
@@ -249,7 +264,7 @@
  select.innerHTML = users.map(u => `<option value="${u}" ${u === currentUser ? 'selected' : ''}>${u}</option>`).join('');
  document.getElementById('watchlistHeader').innerText = `👤 ${currentUser} 的看過清單`;
  const rankHeader = document.getElementById('rankingHeader');
- if (rankHeader) rankHeader.innerText = `🏆 ${currentUser} 的演員常客 Top 25`;
+ if (rankHeader) rankHeader.innerText = `🏆 ${currentUser} 的演員常客 Top 35`;
  document.querySelectorAll('.current-user-name').forEach(el => el.innerText = currentUser);
  renderWatchlist();
  renderActorRanking();
@@ -615,7 +630,7 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  renderActorRanking();
  }
 
- // --- 計算並渲染演員出現頻率排行榜 Top 25 ---
+ // --- 計算並渲染演員出現頻率排行榜 Top 35 與主演備取區 (支援多季自動歸併) ---
  function renderActorRanking(isManual = false) {
  const key = `user_list_${currentUser}`;
  const list = JSON.parse(localStorage.getItem(key) || '[]');
@@ -629,10 +644,22 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  return;
  }
 
+ // 輔助函式：去除季數後綴（如 第1季、Season 2、S2、結尾數字 2/3）取得系列主名稱
+ function getBaseTitle(title) {
+ if (!title) return '';
+ return title
+ .replace(/\s*(?:第[一二三四五六七八九十\d]+季|Season\s*\d+|S\d+)\s*$/i, '')
+ .replace(/[\s\-_]+(?:[2-9]|II|III|IV|V)$/i, '')
+ .trim() || title;
+ }
+
  const actorMap = {};
+
  list.forEach(drama => {
  if (!drama.characters || !Array.isArray(drama.characters)) return;
  const seenInThisDrama = new Set();
+ const rawTitle = drama.canonical_title || '';
+ const baseTitle = getBaseTitle(rawTitle);
 
  drama.characters.forEach(c => {
  const actor = (c.actor || '').trim();
@@ -642,29 +669,52 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  if (!actorMap[actor]) {
  actorMap[actor] = {
  actor: actor,
- count: 0,
- leadCount: 0,
- dramas: []
+ seriesMap: {}
  };
  }
- actorMap[actor].count += 1;
- if (c.is_main_lead) actorMap[actor].leadCount += 1;
- actorMap[actor].dramas.push({
- title: drama.canonical_title,
- role: c.character || '未詳',
- isLead: c.is_main_lead
- });
+
+ if (!actorMap[actor].seriesMap[baseTitle]) {
+ actorMap[actor].seriesMap[baseTitle] = {
+ baseTitle: baseTitle,
+ seasons: [],
+ isLead: false,
+ roles: new Set()
+ };
+ }
+
+ const sObj = actorMap[actor].seriesMap[baseTitle];
+ sObj.seasons.push(rawTitle);
+ if (c.character) sObj.roles.add(c.character);
+ if (c.is_main_lead) sObj.isLead = true;
  });
  });
 
- const sorted = Object.values(actorMap).sort((a, b) => {
+ const sorted = Object.values(actorMap).map(item => {
+ const seriesList = Object.values(item.seriesMap);
+ const count = seriesList.length; // 算作的系列劇總部數
+ const leadCount = seriesList.filter(s => s.isLead).length;
+ 
+ const dramasDetail = seriesList.map(s => {
+ const roleStr = Array.from(s.roles).join('/') || '未詳';
+ const seasonCount = s.seasons.length;
+ const seasonTag = seasonCount > 1 ? ` (${seasonCount}季)` : '';
+ return `《${s.baseTitle}${seasonTag}》${roleStr}${s.isLead ? ' (主)' : ''}`;
+ });
+
+ return {
+ actor: item.actor,
+ count: count,
+ leadCount: leadCount,
+ dramas: dramasDetail
+ };
+ }).sort((a, b) => {
  if (b.count !== a.count) return b.count - a.count;
  return b.leadCount - a.leadCount;
  });
 
- // 取前 25 名
- const top25 = sorted.slice(0, 25);
- if (!top25.length) {
+ // 取前 35 名
+ const top35 = sorted.slice(0, 35);
+ if (!top35.length) {
  section.style.display = 'none';
  return;
  }
@@ -675,13 +725,13 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  statusText.style.color = isManual ? '#818cf8' : 'var(--muted)';
  }
  const medals = ['🥇', '🥈', '🥉'];
- const maxCount = top25[0].count;
+ const maxCount = top35[0].count;
 
- container.innerHTML = top25.map((item, idx) => {
+ container.innerHTML = top35.map((item, idx) => {
  const rank = idx + 1;
  const medalOrNum = idx < 3 ? medals[idx] : `<span class="rank-num">#${rank}</span>`;
  const percentage = Math.round((item.count / list.length) * 100);
- const rolesDetail = item.dramas.map(d => `《${d.title}》${d.role}${d.isLead ? ' (主)' : ''}`).join('、');
+ const rolesDetail = item.dramas.join('、');
 
  return `
  <div class="ranking-card" title="${rolesDetail}">
@@ -692,7 +742,7 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  <div class="actor-role-list">${rolesDetail}</div>
  </div>
  <div class="count-tag">
- <span class="count-val">${item.count}</span> 部劇
+ <span class="count-val">${item.count}</span> 部系列劇
  </div>
  </div>
  <div class="bar-bg">
@@ -705,6 +755,31 @@ ${wikiText || "無維基內文，請完全依靠你的韓劇資料庫知識補�
  </div>
  `;
  }).join('');
+
+ // --- 渲染：主演備取區（曾飾演主演，但沒擠進 Top 35 的演員） ---
+ const top35Names = new Set(top35.map(a => a.actor));
+ const backupLeads = sorted.filter(a => a.leadCount >= 1 && !top35Names.has(a.actor));
+ const backupSection = document.getElementById('leadBackupSection');
+ const backupGrid = document.getElementById('leadBackupGrid');
+ const backupCountTag = document.getElementById('backupCountTag');
+
+ if (backupLeads.length > 0 && backupSection && backupGrid) {
+ backupSection.style.display = 'block';
+ if (backupCountTag) backupCountTag.innerText = `共 ${backupLeads.length} 位`;
+
+ backupGrid.innerHTML = backupLeads.map(item => {
+ const rolesDetail = item.dramas.join('、');
+ return `
+ <div class="backup-card" title="${rolesDetail}">
+ <span style="color:#fff; font-weight:600;">${item.actor}</span>
+ <span style="font-size:0.72rem; color:#e11d48; background:rgba(225,29,72,0.12); padding:1px 5px; border-radius:4px;">主演 ${item.leadCount} 次</span>
+ <span style="font-size:0.72rem; color:var(--muted);">共 ${item.count} 部</span>
+ </div>
+ `;
+ }).join('');
+ } else if (backupSection) {
+ backupSection.style.display = 'none';
+ }
  }
 
  async function reparseDrama(title) {
